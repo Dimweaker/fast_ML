@@ -35,7 +35,8 @@ def CombinedLabel(df: pd.DataFrame, features=None, n=2, drop_first=False, inplac
         features = df.columns.values.tolist()
     elif isinstance(features, str):
         features = [features]
-        mapping = {features: mapping}
+        if mapping is not None:
+            mapping = {features: mapping}
 
     if n > len(features):
         raise Exception("n cannot be greater than the number of features")
