@@ -55,9 +55,14 @@ def CombinedLabel(df: pd.DataFrame, features=None, n=2, drop_first=False, inplac
     return df
 
 
-def Transform(df: pd.DataFrame, method, features=None, drop_first=False, inplace=False):
+def Transform(df: pd.DataFrame, method, features=None,
+              drop_first=False, inplace=False,
+              on_original_cols=False, prefix="", suffix=""):
     if not inplace:
         df = df.copy()
+
+    if drop_first and not on_original_cols:
+        raise Exception("drop_first cannot be True if on_original_cols is False")
 
     if features is None:
         features = df.columns.values.tolist()
@@ -66,15 +71,21 @@ def Transform(df: pd.DataFrame, method, features=None, drop_first=False, inplace
 
     if callable(method):
         for feature in features:
-            if method.__name__ == "<lambda>":
+            if on_original_cols:
+                new_feature = feature
+            elif any(prefix, suffix):
+                new_feature = f"{prefix}{feature}{suffix}"
+            elif method.__name__ == "<lambda>":
                 new_feature = f"{feature}_transformed"
-            else:
+            elif hasattr(method, "__name__"):
                 new_feature = f"{feature}_{method.__name__}"
+            else:
+                raise Exception("Can't find a default name. Please provide a name for the method.")
             df[new_feature] = df[feature].apply(method)
     elif isinstance(method, str):
         for feature in features:
             try:
-                new_feature = f"{feature}_{method}"
+                new_feature = f"{feature}_{method}" if not on_original_cols else feature
                 df[new_feature] = getattr(np, method)(df[feature])
             except Exception as e:
                 raise Exception(e)
@@ -83,3 +94,5 @@ def Transform(df: pd.DataFrame, method, features=None, drop_first=False, inplace
 
     if drop_first:
         df.drop(features, axis=1, inplace=True)
+
+    return df

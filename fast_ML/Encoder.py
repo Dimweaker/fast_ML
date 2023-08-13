@@ -19,7 +19,9 @@ def OneHotEncode(df: pd.DataFrame, features=None, drop_first=False, inplace=Fals
     return df
 
 
-def LabelEncode(df: pd.DataFrame, features=None, inplace=False, mapping=None):
+def LabelEncode(df: pd.DataFrame, features=None,
+                inplace=False, mapping=None,
+                on_original_cols=True, prefix="", suffix="_labeled",):
     """
     LabelEncoder
     """
@@ -40,6 +42,7 @@ def LabelEncode(df: pd.DataFrame, features=None, inplace=False, mapping=None):
             mapping[feature] = {k: v for v, k in enumerate(mapping[feature])}
 
     for feature in features:
-        df[feature] = df[feature].map(mapping[feature])
+        new_feature = f"{prefix}{feature}{suffix}" if not on_original_cols else feature
+        df[new_feature] = df[feature].map(mapping[feature])
 
     return df
