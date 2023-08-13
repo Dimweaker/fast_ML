@@ -12,6 +12,8 @@ def OneHotEncode(df: pd.DataFrame, features=None, drop_first=False, inplace=Fals
         features = df.columns.values.tolist()
     elif isinstance(features, str):
         features = [features]
+    elif not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
 
     all_dummies = pd.get_dummies(df[features], drop_first=drop_first, prefix_sep=sep, dummy_na=dummy_na)
     df = pd.concat([df, all_dummies], axis=1)
@@ -33,6 +35,8 @@ def LabelEncode(df: pd.DataFrame, features=None,
     elif isinstance(features, str):
         features = [features]
         mapping = {features: mapping}
+    elif not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
 
     if mapping is None:
         mapping = {}

@@ -5,14 +5,18 @@ from itertools import combinations
 from fast_ML.Encoder import LabelEncode
 
 
-def CombinedOneHot(df: pd.DataFrame, features=None, n=2, drop_first=False, inplace=False, brackets="()", sep=", "):
+def CombinedOneHot(df: pd.DataFrame, features=None, n=2,
+                   drop_first=False, inplace=False,
+                   brackets="()", sep=", "):
     if not inplace:
         df = df.copy()
 
     if features is None:
         features = df.columns.values.tolist()
-    elif isinstance(features, str):
-        features = [features]
+    elif isinstance(features, str) or not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+    elif len(features) < 2:
+        raise Exception("features must contain at least 2 features")
 
     if n > len(features):
         raise Exception("n cannot be greater than the number of features")
@@ -27,16 +31,18 @@ def CombinedOneHot(df: pd.DataFrame, features=None, n=2, drop_first=False, inpla
     return df
 
 
-def CombinedLabel(df: pd.DataFrame, features=None, n=2, drop_first=False, inplace=False, mapping=None, brackets="()", sep=", "):
+def CombinedLabel(df: pd.DataFrame, features=None, n=2,
+                  drop_first=False, inplace=False, mapping=None,
+                  brackets="()", sep=", "):
     if not inplace:
         df = df.copy()
 
     if features is None:
         features = df.columns.values.tolist()
-    elif isinstance(features, str):
-        features = [features]
-        if mapping is not None:
-            mapping = {features: mapping}
+    elif isinstance(features, str) or not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+    elif len(features) < 2:
+        raise Exception("features must contain at least 2 features")
 
     if n > len(features):
         raise Exception("n cannot be greater than the number of features")
@@ -68,12 +74,14 @@ def Transform(df: pd.DataFrame, method, features=None,
         features = df.columns.values.tolist()
     elif isinstance(features, str):
         features = [features]
+    elif not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
 
     if callable(method):
         for feature in features:
             if on_original_cols:
                 new_feature = feature
-            elif any(prefix, suffix):
+            elif any([prefix, suffix]):
                 new_feature = f"{prefix}{feature}{suffix}"
             elif method.__name__ == "<lambda>":
                 new_feature = f"{feature}_transformed"
@@ -81,6 +89,7 @@ def Transform(df: pd.DataFrame, method, features=None,
                 new_feature = f"{feature}_{method.__name__}"
             else:
                 raise Exception("Can't find a default name. Please provide a name for the method.")
+
             df[new_feature] = df[feature].apply(method)
     elif isinstance(method, str):
         for feature in features:
@@ -96,3 +105,57 @@ def Transform(df: pd.DataFrame, method, features=None,
         df.drop(features, axis=1, inplace=True)
 
     return df
+
+
+def Polynomial(df: pd.DataFrame, features=None, degree=2,
+               interaction_only=False, include_bias=False,
+               sep="*", inplace=False):
+    if not inplace:
+        df = df.copy()
+
+    if not isinstance(degree, int) or degree < 2:
+        raise Exception("degree must be an integer greater than 1")
+
+    if features is None:
+        features = df.columns.values.tolist()
+    elif isinstance(features, str) or not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+    elif len(features) < 2:
+        raise Exception("features must contain at least 2 features")
+
+    used_features = features.copy() if interaction_only else [[f] * degree for f in features]
+    for comb in combinations(used_features, degree):
+        new_feature = sep.join(comb)
+        df[new_feature] = df[comb].apply(np.prod, axis=1)
+
+    if include_bias:
+        df["bias"] = 1
+
+    return df
+
+
+def Bin(df: pd.DataFrame, features=None, bins=10, labels=None,
+        right=True, retbins=False, precision=3, include_lowest=False,
+        inplace=False, sep_feature_bin="_", sep_bin_n=""):
+    if not inplace:
+        df = df.copy()
+
+    if features is None:
+        features = df.columns.values.tolist()
+    elif isinstance(features, str):
+        features = [features]
+    elif not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+
+    if labels is None:
+        labels = range(bins)
+
+    for feature in features:
+        new_feature = f"{feature}{sep_feature_bin}bin{sep_bin_n}{bins}"
+        df[new_feature], bins = pd.cut(df[feature], bins=bins, labels=labels, right=right,
+                                       retbins=retbins, precision=precision, include_lowest=include_lowest)
+        if retbins:
+            df[new_feature] = df[new_feature].cat.codes
+
+    return df
+
