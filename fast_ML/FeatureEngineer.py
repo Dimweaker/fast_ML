@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from itertools import combinations
+from sklearn import preprocessing
 from fast_ML.Encoder import LabelEncode
 
 
@@ -23,7 +24,7 @@ def CombinedOneHot(df: pd.DataFrame, features=None, n=2,
 
     for comb in combinations(features, n):
         new_feature = brackets[0] + sep.join(comb) + brackets[1]
-        df[new_feature] = df[comb].apply(all, axis=1).astype(int)
+        df[new_feature] = df[list(comb)].apply(all, axis=1).astype(int)
 
     if drop_first:
         df.drop(features, axis=1, inplace=True)
@@ -48,12 +49,13 @@ def CombinedLabel(df: pd.DataFrame, features=None, n=2,
         raise Exception("n cannot be greater than the number of features")
 
     combs = combinations(features, n)
+    new_features = []
     for comb in combs:
         new_feature = brackets[0] + sep.join(comb) + brackets[1]
-        df[new_feature] = df[comb].apply(lambda x: "_".join(x), axis=1)
+        new_features.append(new_feature)
+        df[new_feature] = df[list(comb)].astype(str).apply(lambda x: "_".join(x), axis=1)
 
-    new_features = [brackets[0] + sep.join(comb) + brackets[1] for comb in combs]
-    df = LabelEncode(df, features=new_features, inplace=True, mapping=mapping)
+    df = LabelEncode(df, features=new_features, mapping=mapping, inplace=True)
 
     if drop_first:
         df.drop(features, axis=1, inplace=True)
@@ -108,8 +110,7 @@ def Transform(df: pd.DataFrame, method, features=None,
 
 
 def Polynomial(df: pd.DataFrame, features=None, degree=2,
-               interaction_only=False, include_bias=False,
-               sep="*", inplace=False):
+               interaction_only=False, include_bias=False, inplace=False):
     if not inplace:
         df = df.copy()
 
@@ -123,13 +124,10 @@ def Polynomial(df: pd.DataFrame, features=None, degree=2,
     elif len(features) < 2:
         raise Exception("features must contain at least 2 features")
 
-    used_features = features.copy() if interaction_only else [[f] * degree for f in features]
-    for comb in combinations(used_features, degree):
-        new_feature = sep.join(comb)
-        df[new_feature] = df[comb].apply(np.prod, axis=1)
-
-    if include_bias:
-        df["bias"] = 1
+    pf = preprocessing.PolynomialFeatures(degree=degree, interaction_only=interaction_only, include_bias=include_bias)
+    new_features_data = pf.fit_transform(df[features])[..., len(features):]
+    new_features = pf.get_feature_names_out(features)[len(features):]
+    df[new_features] = pd.DataFrame(new_features_data, columns=new_features)
 
     return df
 
