@@ -118,3 +118,70 @@ def RecursiveFeatureElimination(df: pd.DataFrame, features=None, target="",
         "selected_features": selected.columns.values.tolist(),
         "selected_ranking": ranking.loc[selector.get_support()],
     }
+
+
+def CorrelationThreshold(df: pd.DataFrame, features=None, target="", method="pearson", threshold=0.0, inplace=False):
+    if not inplace:
+        df = df.copy()
+
+    if features is None:
+        features = df.columns.values.tolist()
+    elif isinstance(features, str) or not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+
+    other_features = [feature for feature in df.columns.values.tolist() if feature not in features]
+
+    if method == "pearson":
+        corr = df[features].corr(method=method)
+    elif method == "spearman":
+        corr = df[features].corr(method=method)
+    elif method == "kendall":
+        corr = df[features].corr(method=method)
+    else:
+        raise Exception("Invalid method. Expected one of: pearson, spearman, kendall")
+
+    selected = corr[(corr[target] >= threshold) | (corr[target] <= -threshold)][target]
+    selected = selected.drop(target, errors="ignore").index.values.tolist()
+
+    df = pd.concat([df[other_features], df[selected]], axis=1)
+
+    return {
+        "df": df,
+        "corr": corr,
+        "selected": selected,
+        "selected_corr": corr.loc[selected, target],
+    }
+
+
+def CorrelationTopk(df: pd.DataFrame, features=None, target="", method="pearson", k=1, inplace=False):
+    if not inplace:
+        df = df.copy()
+
+    if features is None:
+        features = df.columns.values.tolist()
+    elif isinstance(features, str) or not hasattr(features, "__iter__"):
+        raise Exception("features must be a iteration of features")
+
+    other_features = [feature for feature in df.columns.values.tolist() if feature not in features]
+
+    if method == "pearson":
+        corr = df[features].corr(method=method)
+    elif method == "spearman":
+        corr = df[features].corr(method=method)
+    elif method == "kendall":
+        corr = df[features].corr(method=method)
+    else:
+        raise Exception("Invalid method. Expected one of: pearson, spearman, kendall")
+
+    selected = corr[target].abs().nlargest(k).index.values.tolist()
+
+    df = pd.concat([df[other_features], df[selected]], axis=1)
+
+    return {
+        "df": df,
+        "corr": corr,
+        "ranking": corr[target].abs().nlargest(k),
+        "selected": selected,
+        "selected_corr": corr.loc[selected, target],
+        "selected_ranking": corr.loc[selected, target].abs().nlargest(k),
+    }

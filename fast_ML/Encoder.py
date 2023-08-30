@@ -25,7 +25,7 @@ def OneHotEncode(df: pd.DataFrame, features=None, drop_first=False, inplace=Fals
 
 def LabelEncode(df: pd.DataFrame, features=None,
                 inplace=False, mapping=None,
-                on_original_cols=True, prefix="", suffix="_labeled", ):
+                on_original_cols=True, prefix="", suffix="_labeled"):
     """
     LabelEncoder
     """
@@ -40,13 +40,6 @@ def LabelEncode(df: pd.DataFrame, features=None,
         features = [features]
     elif not hasattr(features, "__iter__"):
         raise Exception("features must be a iteration of features")
-
-    # if mapping is None:
-    #     mapping = {}
-    #     for feature in features:
-    #         mapping[feature] = df[feature].unique().tolist()
-    #         mapping[feature].sort()
-    #         mapping[feature] = {k: v for v, k in enumerate(mapping[feature])}
 
     new_features = [f"{prefix}{feature}{suffix}" if not on_original_cols else feature
                     for feature in features]
